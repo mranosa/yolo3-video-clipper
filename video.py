@@ -62,13 +62,20 @@ things = []
 car_flag = -1
 person_flag = -1
 laptop_flag = -1
+motorbike_flag = -1
+bottle_flag = -1
+
 car_out = None
 person_out = None
 laptop_out = None
+motorbike_out = None
+bottle_out = None
 
 car_start = None
 person_start = None
 laptop_start = None
+motorbike_start = None
+bottle_start = None
 
 width = None
 height = None
@@ -98,8 +105,8 @@ model.eval()
 
 
 
-def write(x, results, currentTime):
-    global car_flag, person_flag, laptop_flag, car_out, person_out, laptop_out, car_start, person_start, laptop_start, width, height
+def write(x, results, currentTime, fps):
+    global car_flag, person_flag, laptop_flag, motorbike_flag, bottle_flag, car_out, person_out, laptop_out, motorbike_out, bottle_out, car_start, person_start, laptop_start, motorbike_start, bottle_start, width, height
 
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
@@ -111,21 +118,36 @@ def write(x, results, currentTime):
         if car_flag == -1 :
             car_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - car.avi', fourcc, 20.0, (int(width),int(height)))
             car_start = str(int(currentTime / 1000))
-        car_flag = 30
+        car_flag = fps
         # cv2.putText(frame, 'has car:' + str(currentTime),
         #     (10, 40),
         #     cv2.FONT_HERSHEY_SIMPLEX,
         #     0.5, (128, 0, 0), 2)
+    
     if label == "person":
         if person_flag == -1 :
             person_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - person.avi', fourcc, 20.0, (int(width),int(height)))
             person_start = str(int(currentTime / 1000))
-        person_flag = 30
+        person_flag = fps
+    
     if label == "laptop":
         if laptop_flag == -1 :
             laptop_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - laptop.avi', fourcc, 20.0, (int(width),int(height)))
             laptop_start = str(int(currentTime / 1000))
-        laptop_flag = 30
+        laptop_flag = fps
+    
+    if label == "motorbike":
+        if motorbike_flag == -1 :
+            motorbike_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - motorbike.avi', fourcc, 20.0, (int(width),int(height)))
+            motorbike_start = str(int(currentTime / 1000))
+        motorbike_flag = fps
+    
+    if label == "bottle":
+        if bottle_flag == -1 :
+            bottle_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - bottle.avi', fourcc, 20.0, (int(width),int(height)))
+            bottle_start = str(int(currentTime / 1000))
+        bottle_flag = fps
+    
     cv2.rectangle(img, c1, c2,color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
@@ -169,6 +191,10 @@ while cap.isOpened():
             person_out.write(frame)
         if laptop_out != None and laptop_flag > -1 :
             laptop_out.write(frame)
+        if motorbike_out != None and motorbike_flag > -1 :
+            motorbike_out.write(frame)
+        if bottle_out != None and bottle_flag > -1 :
+            bottle_out.write(frame)
 
         # TODO find way to get the correct time in video
         # TODO clip the video into multiple files
@@ -213,7 +239,7 @@ while cap.isOpened():
         classes = load_classes('data/coco.names')
         colors = pkl.load(open("pallete", "rb"))
 
-        list(map(lambda x: write(x, frame, currentMilli), output))
+        list(map(lambda x: write(x, frame, currentMilli, int(fps)), output))
         
         cv2.imshow("frame", frame)
         # key = cv2.waitKey(int( (1 / int(fps)) * 1000))
@@ -231,15 +257,31 @@ while cap.isOpened():
             person_flag -= 1
         if laptop_flag > -1:
             laptop_flag -= 1
+        if motorbike_flag > -1:
+            motorbike_flag -= 1
+        if bottle_flag > -1:
+            bottle_flag -= 1
+
         if car_out != None and car_flag == 0:
             car_out.release()
+            car_out = None
             things.append(thing(car_start, str(int(currentMilli / 1000)), 'car'))
-        if car_out != None and person_flag == 0:
+        if person_out != None and person_flag == 0:
             person_out.release()
+            person_out = None
             things.append(thing(person_start, str(int(currentMilli / 1000)), 'person'))
-        if car_out != None and laptop_flag == 0:
+        if laptop_out != None and laptop_flag == 0:
             laptop_out.release()
+            laptop_out = None
             things.append(thing(laptop_start, str(int(currentMilli / 1000)), 'laptop'))
+        if motorbike_out != None and motorbike_flag == 0:
+            motorbike_out.release()
+            motorbike_out = None
+            things.append(thing(motorbike_start, str(int(currentMilli / 1000)), 'motorbike'))
+        if bottle_out != None and bottle_flag == 0:
+            bottle_out.release()
+            bottle_out = None
+            things.append(thing(bottle_start, str(int(currentMilli / 1000)), 'bottle'))
     else:
         break     
 
@@ -257,6 +299,12 @@ if person_out != None:
 if laptop_out != None:
     laptop_out.release()            
     things.append(thing(laptop_start, str(int(currentMilli / 1000)), 'laptop'))
+if motorbike_out != None:
+    motorbike_out.release()            
+    things.append(thing(motorbike_start, str(int(currentMilli / 1000)), 'motorbike'))
+if bottle_out != None:
+    bottle_out.release()            
+    things.append(thing(bottle_start, str(int(currentMilli / 1000)), 'bottle'))
 
 things.sort(key=lambda x: x.start)
 
