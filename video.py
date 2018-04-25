@@ -50,6 +50,18 @@ num_classes = 80
 classes = load_classes("data/coco.names")
 
 car_flag = -1
+person_flag = -1
+laptop_flag = -1
+car_out = None
+person_out = None
+laptop_out = None
+
+width = None
+height = None
+
+currentMilli = None
+
+fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
 #Set up the neural network
 print("Loading network.....")
@@ -73,7 +85,7 @@ model.eval()
 
 
 def write(x, results, currentTime):
-    global car_flag
+    global car_flag, person_flag, laptop_flag, car_out, person_out, laptop_out, width, height
 
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
@@ -82,11 +94,21 @@ def write(x, results, currentTime):
     color = random.choice(colors)
     label = "{0}".format(classes[cls])
     if label == "car":
+        if car_flag == -1 :
+            car_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - car.avi', fourcc, 20.0, (int(width),int(height)))
         car_flag = 30
-        cv2.putText(frame, 'has car:' + str(currentTime),
-            (10, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5, (128, 0, 0), 2)
+        # cv2.putText(frame, 'has car:' + str(currentTime),
+        #     (10, 40),
+        #     cv2.FONT_HERSHEY_SIMPLEX,
+        #     0.5, (128, 0, 0), 2)
+    if label == "person":
+        if person_flag == -1 :
+            person_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - person.avi', fourcc, 20.0, (int(width),int(height)))
+        person_flag = 30
+    if label == "laptop":
+        if laptop_flag == -1 :
+            laptop_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - laptop.avi', fourcc, 20.0, (int(width),int(height)))
+        laptop_flag = 30
     cv2.rectangle(img, c1, c2,color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
     c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
@@ -110,8 +132,8 @@ width = cap.get(3)
 height = cap.get(4)
 
 # Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-out = cv2.VideoWriter('output.avi', fourcc, 20.0, (int(width),int(height)))
+# fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+# out = cv2.VideoWriter('output.avi', fourcc, 20.0, (int(width),int(height)))
 
 
 assert cap.isOpened(), 'Cannot capture source'
@@ -123,13 +145,19 @@ while cap.isOpened():
     ret, frame = cap.read()    
     fps = cap.get(5)
     
-    if car_flag > -1 :
-        out.write(frame)
+    if car_out != None and car_flag > -1 :
+        car_out.write(frame)
+    if person_out != None and person_flag > -1 :
+        person_out.write(frame)
+    if laptop_out != None and laptop_flag > -1 :
+        laptop_out.write(frame)
 
     if ret:
         # TODO find way to get the correct time in video
         # TODO clip the video into multiple files
         timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC))
+        currentMilli = cap.get(cv2.CAP_PROP_POS_MSEC)
+
         currentTime = calc_timestamps[-1] + 1000/fps
         calc_timestamps.append(currentTime)
 
@@ -168,7 +196,7 @@ while cap.isOpened():
         classes = load_classes('data/coco.names')
         colors = pkl.load(open("pallete", "rb"))
 
-        list(map(lambda x: write(x, frame, currentTime), output))
+        list(map(lambda x: write(x, frame, currentMilli), output))
         
         cv2.imshow("frame", frame)
         # key = cv2.waitKey(int( (1 / int(fps)) * 1000))
@@ -182,12 +210,30 @@ while cap.isOpened():
         
         if car_flag > -1:
             car_flag -= 1
+        if person_flag > -1:
+            person_flag -= 1
+        if laptop_flag > -1:
+            laptop_flag -= 1
+        if car_out != None and car_flag == 0:
+            car_out.release()
+        if car_out != None and person_flag == 0:
+            person_out.release()
+        if car_out != None and laptop_flag == 0:
+            laptop_out.release()
     else:
         break     
 
 # Release everything if job is finished
 cap.release()
-out.release()
+# out.release()
+
+if car_out != None:
+    car_out.release()
+if person_out != None:
+    person_out.release()
+if laptop_out != None:
+    laptop_out.release()            
+
 cv2.destroyAllWindows()
 
 
