@@ -13,6 +13,14 @@ from darknet import Darknet
 import pickle as pkl
 import pandas as pd
 import random
+import json
+
+class thing:
+
+    def __init__(self, start, end, category):
+        self.start = start
+        self.end = end
+        self.category = category
 
 def arg_parse():
     """
@@ -49,12 +57,18 @@ CUDA = torch.cuda.is_available()
 num_classes = 80
 classes = load_classes("data/coco.names")
 
+things = []
+
 car_flag = -1
 person_flag = -1
 laptop_flag = -1
 car_out = None
 person_out = None
 laptop_out = None
+
+car_start = None
+person_start = None
+laptop_start = None
 
 width = None
 height = None
@@ -85,7 +99,7 @@ model.eval()
 
 
 def write(x, results, currentTime):
-    global car_flag, person_flag, laptop_flag, car_out, person_out, laptop_out, width, height
+    global car_flag, person_flag, laptop_flag, car_out, person_out, laptop_out, car_start, person_start, laptop_start, width, height
 
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
@@ -95,7 +109,8 @@ def write(x, results, currentTime):
     label = "{0}".format(classes[cls])
     if label == "car":
         if car_flag == -1 :
-            car_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - car.avi', fourcc, 20.0, (int(width),int(height)))
+            car_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - car.avi', fourcc, 20.0, (int(width),int(height)))
+            car_start = str(int(currentTime / 1000))
         car_flag = 30
         # cv2.putText(frame, 'has car:' + str(currentTime),
         #     (10, 40),
@@ -103,11 +118,13 @@ def write(x, results, currentTime):
         #     0.5, (128, 0, 0), 2)
     if label == "person":
         if person_flag == -1 :
-            person_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - person.avi', fourcc, 20.0, (int(width),int(height)))
+            person_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - person.avi', fourcc, 20.0, (int(width),int(height)))
+            person_start = str(int(currentTime / 1000))
         person_flag = 30
     if label == "laptop":
         if laptop_flag == -1 :
-            laptop_out = cv2.VideoWriter('output/' + str(int(currentMilli / 1000)) + 's - laptop.avi', fourcc, 20.0, (int(width),int(height)))
+            laptop_out = cv2.VideoWriter('output/' + str(int(currentTime / 1000)) + 's - laptop.avi', fourcc, 20.0, (int(width),int(height)))
+            laptop_start = str(int(currentTime / 1000))
         laptop_flag = 30
     cv2.rectangle(img, c1, c2,color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
@@ -144,15 +161,15 @@ start = time.time()
 while cap.isOpened():
     ret, frame = cap.read()    
     fps = cap.get(5)
-    
-    if car_out != None and car_flag > -1 :
-        car_out.write(frame)
-    if person_out != None and person_flag > -1 :
-        person_out.write(frame)
-    if laptop_out != None and laptop_flag > -1 :
-        laptop_out.write(frame)
 
     if ret:
+        if car_out != None and car_flag > -1 :
+            car_out.write(frame)
+        if person_out != None and person_flag > -1 :
+            person_out.write(frame)
+        if laptop_out != None and laptop_flag > -1 :
+            laptop_out.write(frame)
+
         # TODO find way to get the correct time in video
         # TODO clip the video into multiple files
         timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC))
@@ -216,10 +233,13 @@ while cap.isOpened():
             laptop_flag -= 1
         if car_out != None and car_flag == 0:
             car_out.release()
+            things.append(thing(car_start, str(int(currentMilli / 1000)), 'car'))
         if car_out != None and person_flag == 0:
             person_out.release()
+            things.append(thing(person_start, str(int(currentMilli / 1000)), 'person'))
         if car_out != None and laptop_flag == 0:
             laptop_out.release()
+            things.append(thing(laptop_start, str(int(currentMilli / 1000)), 'laptop'))
     else:
         break     
 
@@ -227,12 +247,20 @@ while cap.isOpened():
 cap.release()
 # out.release()
 
+
 if car_out != None:
     car_out.release()
+    things.append(thing(car_start, str(int(currentMilli / 1000)), 'car'))
 if person_out != None:
     person_out.release()
+    things.append(thing(person_start, str(int(currentMilli / 1000)), 'person'))
 if laptop_out != None:
     laptop_out.release()            
+    things.append(thing(laptop_start, str(int(currentMilli / 1000)), 'laptop'))
+
+things.sort(key=lambda x: x.start)
+
+print(json.dumps([ob.__dict__ for ob in things]))
 
 cv2.destroyAllWindows()
 
